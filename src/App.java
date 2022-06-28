@@ -4,13 +4,17 @@ import java.util.ArrayList;
 import java.util.Scanner;
 
 import java.awt.*;
+import java.awt.datatransfer.StringSelection;
+import java.awt.datatransfer.Clipboard;
+
 import javax.swing.*;
 import java.awt.event.*;
 
 import Misc.GetSystemInfo;
 import FileUtil.FileUtil;
 
-/* Student ID Merger
+/**
+ * Student ID Merger
  * This program will take input from a CSV containing student names and student IDs and merge them with yearbook photos in a folder that contains a text file with the student's name and photo location. This will be done by parcing the name and checking the about of matches, if there is to many matches or not enought it will prompt the user to input the student's ID.
  * 
  * Created for Bonham Independent School District
@@ -18,7 +22,6 @@ import FileUtil.FileUtil;
  * @author Walter Ozmore
  * @date 6/23/2022
  */
-
 public class App {
     // UserInput though console, this is used by the console version of the program
     static Scanner userInput = new Scanner( System.in );
@@ -33,7 +36,7 @@ public class App {
     static File accenderFile = null;
     static File yearBookFile = null;
     static File outputFolder = null;
-    static File lastDir = new File("G:\\Shared drives\\Technology\\Student IDs");
+    static File lastDir = new File("H:\\Shared drives\\Technology\\Student IDs");
 
     // Determinds if the GUI should be enabled
     static boolean gui = true;
@@ -74,11 +77,11 @@ public class App {
             }
 
             if(results.size() == 0 || results.size() >= 2) {
-                if(gui) {
-                    gui_queryUser(student, results, x+1);
-                    return;
-                } else
-                    console_queryUser(student, results);
+                // if(gui) {
+                //     gui_queryUser(student, results, x+1);
+                //     return;
+                // } else
+                //     console_queryUser(student, results);
                 continue;
             }
 
@@ -117,6 +120,9 @@ public class App {
                     // If the place in the CVS corrosponseds with Name then set the name to the student, but the csvRegex does not remove quotes so trim the edges
                     if( header[x].startsWith("Name") ) student.fullName = list[x].substring(1, list[x].length() - 1 );
                     if( header[x].equals("Student ID") ) student.id = list[x];
+                    try {
+                        if( header[x].equals("Grade") ) student.gradeLevel = Integer.parseInt( list[x] );
+                    } catch(Exception e) {}
                 }
                 accenderStudents.add( student );
             }
@@ -141,6 +147,7 @@ public class App {
             System.out.println( outputImage.getAbsolutePath() );
             FileUtil.copy(s.yearbookImage, outputImage );
 		}
+        System.exit(0);
     }
 
     /**
@@ -167,6 +174,9 @@ public class App {
 		for(File file:dir.listFiles())
 			if( file.getName().toLowerCase().endsWith(".txt") )
 				textFile = file;
+
+        if(textFile == null) return;
+        
 
         try {
             Scanner scanner = new Scanner( textFile );
@@ -210,13 +220,18 @@ public class App {
      * @author Walter Ozmore
      */
     static void gui_run() {
+        // Try and grab files
+        accenderFile = new File( lastDir.getAbsolutePath() + "\\StudentList_June_2022.csv" );
+        yearBookFile = new File( lastDir.getAbsolutePath() + "\\Yearbooks" );
+        outputFolder = new File( lastDir.getAbsolutePath() + "\\Student Photo IDs" );
+
         JFrame frame = new JFrame("Student ID Merger");
         JPanel panel = new JPanel();
         panel.setLayout(new GridLayout(4,2));
 
 
         JLabel label_accenderFile = new JLabel();
-        label_accenderFile.setText("No File Selected");
+        label_accenderFile.setText( (accenderFile == null)? "No File Selected" : accenderFile.getAbsolutePath() );
         panel.add( label_accenderFile );
 
         JButton button_chooseAccenderFile = new JButton();
@@ -234,7 +249,7 @@ public class App {
 
 
         JLabel label_yearBookFile = new JLabel();
-        label_yearBookFile.setText("No File Selected");
+        label_yearBookFile.setText( (yearBookFile == null)? "No File Selected" : yearBookFile.getAbsolutePath() );
         panel.add( label_yearBookFile );
 
         JButton button_chooseYearbookFile = new JButton();
@@ -252,7 +267,7 @@ public class App {
 
 
         JLabel label_outputFile = new JLabel();
-        label_outputFile.setText("No File Selected");
+        label_outputFile.setText( (outputFolder == null)? "No File Selected" : outputFolder.getAbsolutePath() );
         panel.add( label_outputFile );
 
         JButton button_chooseOutputFile = new JButton();
@@ -321,13 +336,15 @@ public class App {
         studentImage.setBounds(0, 0, 500, 500);
         panel.add( studentImage );
 
-        String column[] = { "ID", "First Name", "Last Name", "Full Name" };
+        // String column[] = { "ID", "First Name", "Last Name", "Full Name" };
+        String column[] = { "ID", "Full Name", "Grade Level" };
         String data[][] = new String[results.size()][column.length];
         for(int x=0;x<results.size();x++) {
-            data[x][3] = results.get(x).fullName;
+            data[x][1] = results.get(x).fullName;
             data[x][0] = results.get(x).id;
-            data[x][1] = results.get(x).firstName;
-            data[x][2] = results.get(x).lastName;
+            data[x][2] = results.get(x).gradeLevel + "";
+            // data[x][1] = results.get(x).firstName;
+            // data[x][2] = results.get(x).lastName;
         }
         JTable jt = new JTable(data,column);
         JScrollPane sp=new JScrollPane(jt);
@@ -335,8 +352,17 @@ public class App {
         panel.add(sp);
 
         JLabel studentName = new JLabel(student.firstName + " " + student.lastName);
-        studentName.setBounds(510, 0, 100, 20);
+        studentName.setBounds(510, 0, 500, 20);
         panel.add( studentName );
+
+        JLabel fileLocation = new JLabel(student.yearbookImage.getAbsolutePath());
+        fileLocation.setBounds(510, 40, 500, 20);
+        panel.add( fileLocation );
+
+        // Copy name to clipboard
+        StringSelection selection = new StringSelection( student.firstName + " " + student.lastName );
+        Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+        clipboard.setContents(selection, selection);
 
         JLabel enterMessage = new JLabel("Enter the ID of the student:");
         enterMessage.setBounds(510, 20, 200, 20);
@@ -477,4 +503,5 @@ public class App {
     String firstName;
     String lastName;
     String fullName;
+    int gradeLevel;
 }
